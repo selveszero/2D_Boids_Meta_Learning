@@ -1,6 +1,10 @@
 from dataset import get_train_data, Dataset_builder
+import torch
 from torch.utils.data import DataLoader
+from torch import optim
+from torch.nn import functional as F
 import matplotlib.pyplot as plt
+from model import BaselineModel
 
 
 def plot_2D(position, orientation, obs_time=None, title_name=None):
@@ -19,9 +23,51 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
     plt.title(title_name)
     plt.show()
 
+def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
+    # initial the optimizer
+    optimizer = optim.Adam(model.parameters(), lr=LR)
+    # initial running loss
+    running_train_loss = 0
+    running_val_loss = 0
+
+    for epoch_index in range(EPOCHS):
+        for iter_index, data in enumerate(train_loader, 0):
+            data = data.to(device)
+            bs, t, n_agent, s_dim = data.shape
+            forward_t = t-1
+
+            pred = torch.zeros(*data.shape).to(device)
+            pred[:, 0] = data[:, 0]  # given initial state
+            # init the hidden state
+            init_s = data[:,0].reshape(-1,s_dim)  # intput the first state into model
+            h = model.initHidden(n_agent)
+            # forward
+            for t_index in range(forward_t):
+                s, h = model(init_s, h)
+                pred[:, t_index+1] = s
+
+            # compute loss function
+            loss = F.mse_loss(pred, data)
+            optimizer.zero_grad()
+            loss.backward()  # backpropogation
+            optimizer.step()
+            # add up run loss for each batch
+            running_train_loss += loss.item()
+
+        # log
+        avg_train_loss = running_train_loss/len(train_loader)
+        running_train_loss = 0
+        print('Loss: {:.4f}'.format(avg_train_loss))
+    pass
+
 
 
 if __name__ == '__main__':
+    # hyper-para setting
+    EPOCHS = 1000
+    LR = 0.01
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     # get the training data
     train_data_path = './data/train'
     val_data_path = './data/val'
@@ -48,3 +94,9 @@ if __name__ == '__main__':
     orientation = train_set[0][:, :, 2:]
     # plot traj
     plot_2D(position, orientation, obs_time=3000)
+
+    ## Training
+    # initial the model
+    model = BaselineModel(device)
+    model = model.to(device)
+    train_model(EPOCHS, LR, device, model, train_loader, val_loader)
