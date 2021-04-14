@@ -57,7 +57,13 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
         # log
         avg_train_loss = running_train_loss/len(train_loader)
         running_train_loss = 0
-        print('Loss: {:.4f}'.format(avg_train_loss))
+        print('Epoch: {} \t Loss: {:.4f}'.format(epoch_index, avg_train_loss))
+        if epoch_index in [100, 500, 800, 1000]:
+            # plot the traj
+            vis_traj = pred[0].to('cpu').detach().numpy()
+            position = vis_traj[:, :, :2]
+            orientation = vis_traj[:, :, 2:]
+            plot_2D(position, orientation, obs_time=3000)
     pass
 
 
