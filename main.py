@@ -35,19 +35,30 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
             data = data.to(device)
             bs, t, n_agent, s_dim = data.shape
             forward_t = t-1
+            x = data[:, :-1]
+            y = data[:, 1:]
 
-            pred = torch.zeros(*data.shape).to(device)
-            pred[:, 0] = data[:, 0]  # given initial state
+
+            # init 0 pred
+            pred = torch.zeros(bs, t-1, n_agent, s_dim).to(device)
+            # pred[:, 0] = data[:, 0]  # given initial state
             # init the hidden state
-            init_s = data[:,0].reshape(-1,s_dim)  # intput the first state into model
-            h = model.initHidden(n_agent)
+            # init_s = data[:,0].reshape(-1,s_dim).unsqueeze(0)  # intput the first state into model
+            # input_t_seq = torch.arange(t).to(data).unsqueeze(-1).expand(t,bs*n_agent).unsqueeze(-1)
+            h = model.initHidden(n_agent,bs)
             # forward
+            # output, h_n = model(input_t_seq, h)
+            # output = output.unsqueeze(0)
+            # print()
             for t_index in range(forward_t):
-                s, h = model(init_s, h)
-                pred[:, t_index+1] = s
+                s_start = x[:, t_index].reshape(-1, s_dim).unsqueeze(0)
+                s_end, h = model(s_start, h)
+                s_end = s_start+s_end
+                s_end = s_end.squeeze(0).reshape(bs, n_agent, s_dim)
+                pred[:, t_index] = s_end
 
             # compute loss function
-            loss = F.mse_loss(pred, data)
+            loss = F.mse_loss(pred, y)
             optimizer.zero_grad()
             loss.backward()  # backpropogation
             optimizer.step()
@@ -58,8 +69,8 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
         avg_train_loss = running_train_loss/len(train_loader)
         running_train_loss = 0
         print('Epoch: {} \t Loss: {:.4f}'.format(epoch_index, avg_train_loss))
-        if epoch_index in [100, 500, 800, 1000]:
-            # plot the traj
+        if (epoch_index+1) % 100 == 0:
+            # pred and plot the traj
             vis_traj = pred[0].to('cpu').detach().numpy()
             position = vis_traj[:, :, :2]
             orientation = vis_traj[:, :, 2:]
