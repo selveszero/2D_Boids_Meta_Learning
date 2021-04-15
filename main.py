@@ -23,7 +23,7 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
     plt.title(title_name)
     plt.show()
 
-def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
+def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
     # initial the optimizer
     optimizer = optim.Adam(model.parameters(), lr=LR)
     # initial running loss
@@ -37,28 +37,19 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
             forward_t = t-1
             x = data[:, :-1]
             y = data[:, 1:]
-
-
+            y_delta = y-x
             # init 0 pred
-            pred = torch.zeros(bs, t-1, n_agent, s_dim).to(device)
-            # pred[:, 0] = data[:, 0]  # given initial state
+            pred_delta = torch.zeros(bs, t-1, n_agent, s_dim).to(device)
             # init the hidden state
-            # init_s = data[:,0].reshape(-1,s_dim).unsqueeze(0)  # intput the first state into model
-            # input_t_seq = torch.arange(t).to(data).unsqueeze(-1).expand(t,bs*n_agent).unsqueeze(-1)
-            h = model.initHidden(n_agent,bs)
-            # forward
-            # output, h_n = model(input_t_seq, h)
-            # output = output.unsqueeze(0)
-            # print()
+            h = model.initHidden(n_agent, bs)
+            s = x[:, 0].reshape(-1, s_dim).unsqueeze(0) # intput the first state into model
             for t_index in range(forward_t):
-                s_start = x[:, t_index].reshape(-1, s_dim).unsqueeze(0)
-                s_end, h = model(s_start, h)
-                s_end = s_start+s_end
-                s_end = s_end.squeeze(0).reshape(bs, n_agent, s_dim)
-                pred[:, t_index] = s_end
+                s_residual, h = model(s, h)
+                s = s+s_residual
+                pred_delta[:, t_index] = s_residual.squeeze(0).reshape(bs, n_agent, s_dim)
 
             # compute loss function
-            loss = F.mse_loss(pred, y)
+            loss = F.mse_loss(pred_delta, y_delta)
             optimizer.zero_grad()
             loss.backward()  # backpropogation
             optimizer.step()
@@ -69,9 +60,18 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
         avg_train_loss = running_train_loss/len(train_loader)
         running_train_loss = 0
         print('Epoch: {} \t Loss: {:.4f}'.format(epoch_index, avg_train_loss))
-        if (epoch_index+1) % 100 == 0:
+        if (epoch_index+1) % 50 == 0:
+            h = model.initHidden(n_agent, bs)
+            vis_traj = torch.zeros(t, n_agent, s_dim).to(device)
+            vis_traj[0] = vis_init.squeeze(0)
+            s = vis_init
+            for t_index in range(forward_t):
+                s_residual, h = model(s, h)
+                s = s + s_residual
+                # s_end = s_end.squeeze(0).reshape(bs, n_agent, s_dim)
+                vis_traj[t_index+1] = s.squeeze(0)
             # pred and plot the traj
-            vis_traj = pred[0].to('cpu').detach().numpy()
+            vis_traj = vis_traj.to('cpu').detach().numpy()
             position = vis_traj[:, :, :2]
             orientation = vis_traj[:, :, 2:]
             plot_2D(position, orientation, obs_time=3000)
@@ -82,7 +82,7 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader):
 if __name__ == '__main__':
     # hyper-para setting
     EPOCHS = 1000
-    LR = 0.01
+    LR = 0.001
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # get the training data
@@ -113,7 +113,8 @@ if __name__ == '__main__':
     plot_2D(position, orientation, obs_time=3000)
 
     ## Training
+    vis_init = visual_set[0][0].unsqueeze(0).to(device)
     # initial the model
     model = BaselineModel(device)
     model = model.to(device)
-    train_model(EPOCHS, LR, device, model, train_loader, val_loader)
+    train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init)
