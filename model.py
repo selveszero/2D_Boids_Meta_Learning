@@ -6,10 +6,10 @@ class BaselineModel(nn.Module):
     def __init__(self, device):
         super(BaselineModel, self).__init__()
         self.device = device
-        self.hidden_size = 3
+        self.hidden_size = 128
         self.input_size = 4
 
-        self.gru_layers = 1
+        self.gru_layers = 4
         self.gru = nn.GRU(self.input_size, self.hidden_size, self.gru_layers)
         self.fc_o_1 = nn.Linear(self.hidden_size, 256)
         self.fc_o_2 = nn.Linear(256, self.input_size)
@@ -42,15 +42,15 @@ class BaselineModel(nn.Module):
         # o = self.tanh(self.fc_o_2(o))
         # o = self.fc_o_3(o)
 
-        # o, h = self.gru(x, h)
-        # o = self.tanh(o)
-        # o = self.tanh(self.fc_o_1(o))
-        # o = self.fc_o_2(o)
+        o, h = self.gru(x, h)
+        o = self.tanh(o)
+        o = self.tanh(self.fc_o_1(o))
+        o = self.fc_o_2(o)
 
-        x = x.squeeze(0)
-        o = self.tanh(self.fc_1(x))
-        o = self.fc_2(o)
-        o = o.unsqueeze(0)
+        # x = x.squeeze(0)
+        # o = self.tanh(self.fc_1(x))
+        # o = self.fc_2(o)
+        # o = o.unsqueeze(0)
 
         return o, h
 
