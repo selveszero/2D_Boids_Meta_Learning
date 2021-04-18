@@ -7,14 +7,15 @@ class BaselineModel(nn.Module):
         super(BaselineModel, self).__init__()
         self.device = device
         self.hidden_size = 128
-        self.input_size = 4
+        self.state_dim = 4
+        self.input_size = 16
 
         self.gru_layers = 4
         self.gru = nn.GRU(self.input_size, self.hidden_size, self.gru_layers)
         self.fc_o_1 = nn.Linear(self.hidden_size, 256)
-        self.fc_o_2 = nn.Linear(256, self.input_size)
-        self.fc_1 = nn.Linear(self.input_size, 256)
-        self.fc_2 = nn.Linear(256, self.input_size)
+        self.fc_o_2 = nn.Linear(256, self.state_dim)
+        # self.fc_1 = nn.Linear(self.input_size, 256)
+        # self.fc_2 = nn.Linear(256, self.state_dim)
         # self.fc_h_1 = nn.Linear(4+self.hidden_size, 128)
         # self.fc_o_1 = nn.Linear(4+self.hidden_size, 128)
         #

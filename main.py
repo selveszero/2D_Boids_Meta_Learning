@@ -5,6 +5,7 @@ from torch import optim
 from torch.nn import functional as F
 import matplotlib.pyplot as plt
 from model import BaselineModel
+from metrics import *
 
 
 def plot_2D(position, orientation, obs_time=None, title_name=None):
@@ -22,6 +23,31 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
     plt.legend()
     plt.title(title_name)
     plt.show()
+
+def St_compute(s_pos, perception_range=50):
+    with torch.no_grad():
+        offset_mat = s_pos.unsqueeze(-2) - s_pos.unsqueeze(-3)  # current - neighbor
+        dist_mat = torch.sqrt(torch.sum(offset_mat ** 2, dim=-1))  # compute dist mat along time, (t, n_agent, n_agent)
+        St = (dist_mat < perception_range).type(torch.float)
+        # normalization
+        St_sum = torch.sum(St, dim=2)
+        St_norm = St / (St_sum.unsqueeze(-1))
+    return St, St_norm, dist_mat
+
+
+def topk_neighbor(s, k=3):
+    bs, n_agent, state_dim = s.shape
+    St, _, dist_mat = St_compute(s[:, :, :2])
+    St_unsqz = St.unsqueeze(-1)  # (bs,n,n,1)
+    s_unsqz = s.unsqueeze(1).clone()  # (bs,1,n,state_dim)
+    # zero out the non-neighbor, filter
+    dec_s = St_unsqz * s_unsqz  # (bs,n,n,state_dim), two n: for each agent, corresponding to all other n agents
+    # choose the topk close agent (except self node)
+    close_k_index = torch.topk(dist_mat, k + 1, dim=2, largest=False, sorted=True)[1][:, :, 1:]  # return closest, except self
+    close_k_index_expand = close_k_index.unsqueeze(-1).expand(*close_k_index.shape, state_dim)
+
+    s_neigh = torch.gather(dec_s, 2, close_k_index_expand)
+    return s, s_neigh
 
 def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
     # initial the optimizer
@@ -44,7 +70,9 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             h = model.initHidden(n_agent, bs)
             s = x[:, 0].reshape(-1, s_dim).unsqueeze(0) # intput the first state into model
             for t_index in range(forward_t):
-                s_residual, h = model(s, h)
+                s, s_neighbor = topk_neighbor(s)
+                s_input = torch.cat([s.unsqueeze(-2), s_neighbor], dim=2).flatten(start_dim=2, end_dim=3)
+                s_residual, h = model(s_input, h)
                 s = s+s_residual
                 pred_delta[:, t_index] = s_residual.squeeze(0).reshape(bs, n_agent, s_dim)
 
@@ -66,7 +94,9 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             vis_traj[0] = vis_init.squeeze(0)
             s = vis_init
             for t_index in range(forward_t):
-                s_residual, h = model(s, h)
+                s, s_neighbor = topk_neighbor(s)
+                s_input = torch.cat([s.unsqueeze(-2), s_neighbor], dim=2).flatten(start_dim=2, end_dim=3)
+                s_residual, h = model(s_input, h)
                 s = s + s_residual
                 # s_end = s_end.squeeze(0).reshape(bs, n_agent, s_dim)
                 vis_traj[t_index+1] = s.squeeze(0)
