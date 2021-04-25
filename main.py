@@ -6,6 +6,7 @@ from torch.nn import functional as F
 import matplotlib.pyplot as plt
 from model import BaselineModel
 from metrics import *
+import tqdm
 
 
 def plot_2D(position, orientation, obs_time=None, title_name=None):
@@ -50,13 +51,18 @@ def topk_neighbor(s, k=3):
     return s, s_neigh
 
 def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
+    # init setting
+    log_freq = 10
     # initial the optimizer
     optimizer = optim.Adam(model.parameters(), lr=LR)
     # initial running loss
     running_train_loss = 0
     running_val_loss = 0
+    # init loss arr
+    train_loss_arr = []
+    val_loss_arr = []
 
-    for epoch_index in range(EPOCHS):
+    for epoch_index in tqdm.tqdm(range(EPOCHS)):
         for iter_index, data in enumerate(train_loader, 0):
             data = data.to(device)
             bs, t, n_agent, s_dim = data.shape
@@ -81,14 +87,50 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             optimizer.zero_grad()
             loss.backward()  # backpropogation
             optimizer.step()
+            # record train loss
+            train_loss_arr.append(loss.item())
             # add up run loss for each batch
             running_train_loss += loss.item()
 
         # log
-        avg_train_loss = running_train_loss/len(train_loader)
-        running_train_loss = 0
-        print('Epoch: {} \t Loss: {:.4f}'.format(epoch_index, avg_train_loss))
-        if (epoch_index+1) % 50 == 0:
+        if epoch_index % log_freq == 0:
+            # log the training loss function
+            avg_train_loss = running_train_loss/len(train_loader)
+            running_train_loss = 0
+
+            # eval
+            with torch.no_grad():
+                for iter_index, data in enumerate(val_loader, 0):
+                    data = data.to(device)
+                    bs, t, n_agent, s_dim = data.shape
+                    forward_t = t - 1
+                    x = data[:, :-1]
+                    y = data[:, 1:]
+                    y_delta = y - x
+                    # init 0 pred
+                    pred_delta = torch.zeros(bs, t - 1, n_agent, s_dim).to(device)
+                    # init the hidden state
+                    h = model.initHidden(n_agent, bs)
+                    s = x[:, 0].reshape(-1, s_dim).unsqueeze(0)  # intput the first state into model
+                    for t_index in range(forward_t):
+                        s, s_neighbor = topk_neighbor(s)
+                        s_input = torch.cat([s.unsqueeze(-2), s_neighbor], dim=2).flatten(start_dim=2, end_dim=3)
+                        s_residual, h = model(s_input, h)
+                        s = s + s_residual
+                        pred_delta[:, t_index] = s_residual.squeeze(0).reshape(bs, n_agent, s_dim)
+
+                    # compute loss function
+                    loss = F.mse_loss(pred_delta, y_delta)
+                    # add up run loss for each batch
+                    running_val_loss += loss.item()
+                # record avg eval loss
+                val_loss_avg = running_val_loss/len(val_loader)
+                val_loss_arr.append(val_loss_avg)
+
+            print('Epoch: {}\tTrain Loss: {:.4f}\tVal loss{:.4f}'.format(epoch_index, avg_train_loss, val_loss_avg))
+
+
+            ## Visualization
             h = model.initHidden(n_agent, bs)
             vis_traj = torch.zeros(t, n_agent, s_dim).to(device)
             vis_traj[0] = vis_init.squeeze(0)
@@ -105,6 +147,9 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             position = vis_traj[:, :, :2]
             orientation = vis_traj[:, :, 2:]
             plot_2D(position, orientation, obs_time=3000)
+
+            ## Save model
+            torch.save(model, 'trained_model_{}.pt'.format(epoch_index))
     pass
 
 
