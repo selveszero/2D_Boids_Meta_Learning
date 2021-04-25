@@ -8,6 +8,9 @@ from model import BaselineModel
 from metrics import *
 import tqdm
 
+import numpy as np
+from matplotlib import animation, rc
+from IPython.display import HTML, Image # For GIF
 
 def plot_2D(position, orientation, obs_time=None, title_name=None):
     n_agent = position.shape[1]
