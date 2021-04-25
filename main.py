@@ -45,8 +45,8 @@ def plot_animation(position, orientation, obs_time=50, interval=20, title_name='
             line.set_alpha(0.7)
         return lines
 
-    ax.set_xlim(0,600)
-    ax.set_ylim(0,600)
+    ax.set_xlim(0,500)
+    ax.set_ylim(0,500)
     anim = animation.FuncAnimation(fig, connect, np.arange(1, duration), interval=interval)
     rc('animation', html='jshtml')
     if save_gif:
