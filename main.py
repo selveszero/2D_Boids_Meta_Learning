@@ -24,6 +24,33 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
     plt.legend()
     plt.title(title_name)
     plt.show()
+    
+def plot_animation(position, orientation, obs_time=50, interval=20, title_name='animation', save_gif=False):
+    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', (0.5, 0.0, 0.5)]
+    fig, ax = plt.subplots()
+    n_agent = position.shape[1]
+    duration = position.shape[0]
+    lines = []
+    for obs_index in range(n_agent):
+        line, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], "o-")
+        lines.append(line)
+
+    def connect(i):
+        start=max((i-obs_time,0))
+        for lnum,line in enumerate(lines):
+            line.set_data(position[start:i,lnum,0],position[start:i,lnum,1])
+            line.set_color(colors[lnum])
+            line.set_alpha(0.7)
+        return lines
+
+    ax.set_xlim(0,600)
+    ax.set_ylim(0,600)
+    anim = animation.FuncAnimation(fig, connect, np.arange(1, duration), interval=interval)
+    rc('animation', html='jshtml')
+    if save_gif:
+      anim.save(title_name + '.gif', writer='pillow', fps=10)
+      HTML(anim.to_html5_video())
+    return anim
 
 def St_compute(s_pos, perception_range=50):
     with torch.no_grad():
@@ -186,6 +213,8 @@ if __name__ == '__main__':
     orientation = train_set[0][:, :, 2:]
     # plot traj
     plot_2D(position, orientation, obs_time=3000)
+    anim = plot_animation(position, orientation, save_gif=False)
+    print(anim)
 
     ## Training
     vis_init = visual_set[0][0].unsqueeze(0).to(device)
