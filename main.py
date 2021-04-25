@@ -25,7 +25,7 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
     plt.title(title_name)
     plt.show()
     
-def plot_animation(position, orientation, obs_time=50, interval=20, title_name='animation', save_gif=False):
+def plot_animation(position, orientation, obs_time=50, interval=20, fps=50, title_name='animation', save_gif=False):
     colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', (0.5, 0.0, 0.5)]
     fig, ax = plt.subplots()
     n_agent = position.shape[1]
@@ -48,7 +48,7 @@ def plot_animation(position, orientation, obs_time=50, interval=20, title_name='
     anim = animation.FuncAnimation(fig, connect, np.arange(1, duration), interval=interval)
     rc('animation', html='jshtml')
     if save_gif:
-      anim.save(title_name + '.gif', writer='pillow', fps=10)
+      anim.save(title_name + '.gif', writer='pillow', fps=fps)
       HTML(anim.to_html5_video())
     return anim
 
