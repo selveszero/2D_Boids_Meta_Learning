@@ -127,7 +127,7 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
                 val_loss_avg = running_val_loss/len(val_loader)
                 val_loss_arr.append(val_loss_avg)
 
-            print('Epoch: {}\tTrain Loss: {:.4f}\tVal loss{:.4f}'.format(epoch_index, avg_train_loss, val_loss_avg))
+            print('Epoch: {}\tTrain Loss: {:.4f}\tVal loss: {:.4f}'.format(epoch_index, avg_train_loss, val_loss_avg))
 
 
             ## Visualization
@@ -157,7 +157,7 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
 if __name__ == '__main__':
     # hyper-para setting
     EPOCHS = 1000
-    LR = 0.001
+    LR = 0.0005
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # get the training data
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     test_data_path = './data/test'
     visual_data_path = './data/visual'
     # get the dataset
-    data_length = 1000  # specify the length we want
+    data_length = 500  # specify the length we want
     train_set = get_train_data(train_data_path, data_length=data_length, NOISE_VAR=0)
     val_set = get_train_data(val_data_path, data_length=data_length, NOISE_VAR=0)
     test_set = get_train_data(test_data_path, data_length=data_length, NOISE_VAR=0)
