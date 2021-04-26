@@ -40,7 +40,7 @@ def plot_animation(position, orientation, obs_time=50, interval=20, title_name='
     duration = position.shape[0]
     lines = []
     for obs_index in range(n_agent):
-        line, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], "o-")
+        line, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], "o-", markersize=1)
         lines.append(line)
 
     def connect(i):
