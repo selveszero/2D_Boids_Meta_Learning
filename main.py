@@ -100,14 +100,16 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
     train_loss_arr = []
     val_loss_arr = []
 
-    for epoch_index in tqdm.tqdm(range(EPOCHS)):
-        # if meta_train:
+    # initialize meta model
+    if meta_train:
         model_epoch = copy.deepcopy(model)
-        meta_grad = []
         meta_optimizer = optim.Adam(model_epoch.parameters(), lr=LR)
+    for epoch_index in tqdm.tqdm(range(EPOCHS)):
+        if meta_train:
+            meta_grad = []
         for iter_index, data in enumerate(train_loader, 0):
-            # if meta_train:
-            model = copy.deepcopy(model_epoch)
+            if meta_train:
+                model = copy.deepcopy(model_epoch)
             optimizer = optim.Adam(model.parameters(), lr=LR)
             data = data.to(device)
             bs, t, n_agent, s_dim = data.shape
@@ -164,23 +166,46 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
                 meta_grad.append(model.parameters())
         ## Meta update on each epoch
         if meta_train:
+            if epoch_index == 0:
+                data = data.to(device)
+                bs, t, n_agent, s_dim = data.shape
+                forward_t = t - 1
+                x = data[:, :-1]
+                y = data[:, 1:]
+                y_delta = y - x
+                # init 0 pred
+                pred_delta = torch.zeros(bs, t - 1, n_agent, s_dim).to(device)
+                # init the hidden state
+                h = model_epoch.initHidden(n_agent, bs)
+                s = x[:, 0].reshape(-1, s_dim).unsqueeze(0)  # intput the first state into model
+                for t_index in range(forward_t):
+                    s, s_neighbor = topk_neighbor(s)
+                    s_input = torch.cat([s.unsqueeze(-2), s_neighbor], dim=2).flatten(start_dim=2, end_dim=3)
+                    s_residual, h = model_epoch(s_input, h)
+                    s = s + s_residual
+                    pred_delta[:, t_index] = s_residual.squeeze(0).reshape(bs, n_agent, s_dim)
+
+                # compute loss function
+                loss = F.mse_loss(pred_delta, y_delta)
+                meta_optimizer.zero_grad()
+                loss.backward()
             # gradient list for all
             # add up the gradient
             for m_index, m_para in enumerate(meta_grad):
                 if m_index == 0:
                     grad_list = []
                     for m_index, m in enumerate(m_para):
-                        temp = m.grad.data
-                        grad_list.append(temp)
-                        if m_index == 19:
-                            print(temp)
+                        # temp = m.grad.data
+                        grad_list.append(m.grad.data)
                 else:
                     for m_index, m in enumerate(m_para):
-                        temp = m.grad.data
-                        grad_list[m_index] += temp
-                        if m_index == 19:
-                            print(temp)
-            print()
+                        # temp = m.grad.data
+                        grad_list[m_index] += m.grad.data
+            # update the meta gradient
+            for m_index, m in enumerate(model_epoch.parameters()):
+                m.grad.data = grad_list[m_index]/len(train_loader)  # normalize the gradient
+            meta_optimizer.step()
+
 
         # log
         if epoch_index % log_freq == 0:
