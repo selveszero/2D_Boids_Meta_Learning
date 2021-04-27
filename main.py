@@ -31,7 +31,7 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
     plt.title(title_name)
     plt.show()
     
-def plot_animation(position, orientation, obs_time=50, interval=20, title_name='animation', save_gif=False):
+def plot_animation(position, orientation, obs_time=50, interval=20, title_name='animation', save_gif=False, show_vectors=True):
     # lower interval --> faster animation as displayed on colab
     # higher fps --> faster animation in the GIF
     colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', (0.5, 0.0, 0.5)]
@@ -39,17 +39,40 @@ def plot_animation(position, orientation, obs_time=50, interval=20, title_name='
     n_agent = position.shape[1]
     duration = position.shape[0]
     lines = []
+    vectors = []
+    agents = []
     for obs_index in range(n_agent):
-        line, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], "o-", markersize=1)
+        line, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], ".-", markersize=0.5)
         lines.append(line)
+        agent, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], "o-", markersize=5)
+        agents.append(agent)
+        if show_vectors:
+            vector, = ax.plot(position[0,obs_index,0], position[0,obs_index,1], ".--", markersize=0.5)
+            vectors.append(vector)
 
     def connect(i):
         start=max((i-obs_time,0))
-        for lnum,line in enumerate(lines):
-            line.set_data(position[start:i,lnum,0],position[start:i,lnum,1])
-            line.set_color(colors[lnum])
+        for num, line in enumerate(lines):
+            line.set_data(position[start:i,num,0],position[start:i,num,1])
+            line.set_color(colors[num])
             line.set_alpha(0.7)
-        return lines
+
+        for num, agent in enumerate(agents):
+            agent.set_data(position[i,num,0], position[i,num,1])
+            agent.set_color(colors[num])
+
+        if show_vectors:
+            for num, vector in enumerate(vectors):
+                dtime = 10
+                x = position[i,num,0]
+                y = position[i,num,1]
+                dx = orientation[i,num,0]
+                dy = orientation[i,num,1]
+                vector.set_data([x, x + dtime * dx],
+                                [y, y + dtime * dy])
+                vector.set_color(colors[num])
+
+        return lines + agents + vectors
 
     ax.set_xlim(0,500)
     ax.set_ylim(0,500)
@@ -59,6 +82,7 @@ def plot_animation(position, orientation, obs_time=50, interval=20, title_name='
       anim.save(title_name + '.gif', writer='pillow', fps=50)
       HTML(anim.to_html5_video())
     return anim
+
 
 def St_compute(s_pos, perception_range=50):
     with torch.no_grad():
@@ -270,7 +294,7 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             plot_2D(position, orientation, obs_time=3000)
 
             ## Save model
-            torch.save({'model': model, 'train_loss': train_loss_arr, 'val_loss': val_loss_arr}, 'trained_model_{}.pt'.format(epoch_index))
+            torch.save({'model': model, 'train_loss': train_loss_arr, 'val_loss': val_loss_arr, 'vis_traj': vis_traj}, 'trained_model_{}.pt'.format(epoch_index))
     pass
 
 
