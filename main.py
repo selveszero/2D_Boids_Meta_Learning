@@ -87,7 +87,13 @@ def topk_neighbor(s, k=3):
 
 def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
     # Meta Learning
-    meta_train = True
+    meta_train = False
+    # pre trained
+    pretrain = False
+    if pretrain:
+        # cp = torch.load('./trained_models/5data_ori_train/trained_model_20.pt')
+        # model = cp['model']
+        model = torch.load('./trained_models/5data_meta_train/trained_model_100.pt')
     # init setting
     log_freq = 10
     # initial the optimizer
@@ -264,7 +270,7 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             plot_2D(position, orientation, obs_time=3000)
 
             ## Save model
-            torch.save(model, 'trained_model_{}.pt'.format(epoch_index))
+            torch.save({'model': model, 'train_loss': train_loss_arr, 'val_loss': val_loss_arr}, 'trained_model_{}.pt'.format(epoch_index))
     pass
 
 
@@ -297,8 +303,8 @@ if __name__ == '__main__':
     test_loader = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=0)
 
     ## plot trajectory
-    position = train_set[0][:, :, :2]
-    orientation = train_set[0][:, :, 2:]
+    position = visual_set[0][:, :, :2]
+    orientation = visual_set[0][:, :, 2:]
     # plot traj
     plot_2D(position, orientation, obs_time=3000)
     anim = plot_animation(position, orientation, save_gif=False)
