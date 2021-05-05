@@ -315,11 +315,12 @@ if __name__ == '__main__':
     test_data_path = './data/test'
     visual_data_path = './data/visual'
     # get the dataset
-    data_length = 200  # specify the length we want
-    train_set = get_train_data(train_data_path, data_length=data_length, NOISE_VAR=0)
-    val_set = get_train_data(val_data_path, data_length=data_length, NOISE_VAR=0)
-    test_set = get_train_data(test_data_path, data_length=data_length, NOISE_VAR=0)
-    visual_set = get_train_data(visual_data_path, data_length=data_length, NOISE_VAR=0)
+    data_length = 500  # specify the length we want
+    sample_rate = 2
+    train_set = get_train_data(train_data_path, data_length=data_length, NOISE_VAR=0, sample_rate=sample_rate)
+    val_set = get_train_data(val_data_path, data_length=data_length, NOISE_VAR=0, sample_rate=sample_rate)
+    test_set = get_train_data(test_data_path, data_length=data_length, NOISE_VAR=0, sample_rate=sample_rate)
+    visual_set = get_train_data(visual_data_path, data_length=data_length, NOISE_VAR=0, sample_rate=sample_rate)
 
     # build pytorch dataset
     train_data = Dataset_builder(train_set)

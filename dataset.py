@@ -3,7 +3,7 @@ import torch
 import os
 import numpy as np
 
-def get_train_data(dir_path, data_length, NOISE_VAR, skip_begin_step=10):
+def get_train_data(dir_path, data_length, NOISE_VAR, skip_begin_step=10, sample_rate=1):
   data_set = []
   for f_name in os.listdir(dir_path):
     file = open(os.path.join(dir_path, f_name), 'r')
@@ -34,7 +34,7 @@ def get_train_data(dir_path, data_length, NOISE_VAR, skip_begin_step=10):
     # combine Xts into final X tensor
     X = np.concatenate(Xt_list, axis=0)
     X = torch.tensor(X, dtype=torch.float)
-    X = X[skip_begin_step:, :, :]
+    X = X[skip_begin_step::sample_rate, :, :]
     # add NOISE
     if NOISE_VAR != 0:
       X = X + torch.randn_like(X)*NOISE_VAR
