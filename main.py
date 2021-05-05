@@ -9,9 +9,13 @@ from metrics import *
 import tqdm
 import copy
 
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 import numpy as np
 from matplotlib import animation, rc
 from IPython.display import HTML, Image # For GIF
+from metrics import position_consensus
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -95,7 +99,7 @@ def St_compute(s_pos, perception_range=50):
     return St, St_norm, dist_mat
 
 
-def topk_neighbor(s, k=3):
+def topk_neighbor(s, k=7):
     bs, n_agent, state_dim = s.shape
     St, _, dist_mat = St_compute(s[:, :, :2])
     St_unsqz = St.unsqueeze(-1)  # (bs,n,n,1)
@@ -292,7 +296,7 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             position = vis_traj[:, :, :2]
             orientation = vis_traj[:, :, 2:]
             plot_2D(position, orientation, obs_time=3000)
-
+            position_consensus(position)
             ## Save model
             torch.save({'model': model, 'train_loss': train_loss_arr, 'val_loss': val_loss_arr, 'vis_traj': vis_traj}, 'trained_model_{}.pt'.format(epoch_index))
     pass
@@ -311,7 +315,7 @@ if __name__ == '__main__':
     test_data_path = './data/test'
     visual_data_path = './data/visual'
     # get the dataset
-    data_length = 500  # specify the length we want
+    data_length = 200  # specify the length we want
     train_set = get_train_data(train_data_path, data_length=data_length, NOISE_VAR=0)
     val_set = get_train_data(val_data_path, data_length=data_length, NOISE_VAR=0)
     test_set = get_train_data(test_data_path, data_length=data_length, NOISE_VAR=0)
@@ -331,8 +335,9 @@ if __name__ == '__main__':
     orientation = visual_set[0][:, :, 2:]
     # plot traj
     plot_2D(position, orientation, obs_time=3000)
-    anim = plot_animation(position, orientation, save_gif=False)
-    print(anim)
+    position_consensus(position)
+    # anim = plot_animation(position, orientation, save_gif=False)
+    # print(anim)
 
     ## Training
     vis_init = visual_set[0][0].unsqueeze(0).to(device)
