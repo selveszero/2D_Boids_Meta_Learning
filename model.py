@@ -8,7 +8,7 @@ class BaselineModel(nn.Module):
         self.device = device
         self.hidden_size = 128
         self.state_dim = 4
-        self.input_size = 16
+        self.input_size = 32
 
         self.gru_layers = 4
         self.gru = nn.GRU(self.input_size, self.hidden_size, self.gru_layers)
