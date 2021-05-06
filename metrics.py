@@ -3,7 +3,7 @@ import numpy as np
 from scipy.signal import savgol_filter
 
 
-def position_consensus(position):
+def position_consensus(position,title_name='None'):
     fig = plt.figure()
     fig.set_size_inches(10, 5)
 
@@ -17,5 +17,7 @@ def position_consensus(position):
     # plt.xlim([0, 400])
     # plt.ylim([125, 280])
     plt.legend()
+    plt.title(title_name)
+    plt.savefig('./images/'+title_name+'.jpg')
     print('mean position consensus of last 20 time stamps', np.mean(pos_consensus[-20:]))
     plt.show()

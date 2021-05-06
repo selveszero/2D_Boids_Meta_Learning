@@ -19,7 +19,7 @@ from metrics import position_consensus
 
 torch.autograd.set_detect_anomaly(True)
 
-def plot_2D(position, orientation, obs_time=None, title_name=None):
+def plot_2D(position, orientation, obs_time=None, title_name='None'):
     n_agent = position.shape[1]
     fig = plt.figure()
     # use position data to plot the 3D trajectory
@@ -33,6 +33,7 @@ def plot_2D(position, orientation, obs_time=None, title_name=None):
         plt.plot(x, y, label='motion' + str(obs_index))
     plt.legend()
     plt.title(title_name)
+    plt.savefig('./images/' + title_name +'.jpg')
     plt.show()
     
 def plot_animation(position, orientation, obs_time=50, interval=20, title_name='animation', save_gif=False, show_vectors=True):
@@ -119,9 +120,9 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
     # pre trained
     pretrain = False
     if pretrain:
-        # cp = torch.load('./trained_models/5data_ori_train/trained_model_20.pt')
-        # model = cp['model']
-        model = torch.load('./trained_models/5data_meta_train/trained_model_100.pt')
+        cp = torch.load('./trained_models/5data_ori_train_sr2/trained_model_100.pt')
+        model = cp['model']
+
     # init setting
     log_freq = 10
     # initial the optimizer
@@ -295,8 +296,8 @@ def train_model(EPOCHS, LR, device, model, train_loader, val_loader, vis_init):
             vis_traj = vis_traj.to('cpu').detach().numpy()
             position = vis_traj[:, :, :2]
             orientation = vis_traj[:, :, 2:]
-            plot_2D(position, orientation, obs_time=3000)
-            position_consensus(position)
+            plot_2D(position, orientation, obs_time=3000, title_name='Epoch '+str(epoch_index))
+            position_consensus(position,title_name='Epoch '+str(epoch_index)+' metric')
             ## Save model
             torch.save({'model': model, 'train_loss': train_loss_arr, 'val_loss': val_loss_arr, 'vis_traj': vis_traj}, 'trained_model_{}.pt'.format(epoch_index))
     pass
